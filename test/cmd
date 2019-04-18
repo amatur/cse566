@@ -1,0 +1,2 @@
+#!/bin/bash
+../../bin/bcalm -in test3.fa -kmer-size 5 -abundance-min 1 -minimizer-size 3

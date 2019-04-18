@@ -1,0 +1,12 @@
+H	VN:Z:1.0	ks:i:5
+S	0	CTAAGTCCGCTAA	LN:i:13	KC:i:12	km:f:1.3
+L	0	-	0	-	4M
+L	0	-	2	-	4M
+L	0	+	0	+	4M
+L	0	+	1	-	4M
+S	1	TTTAG	LN:i:5	KC:i:1	km:f:1.0
+L	1	+	0	-	4M
+L	1	+	2	-	4M
+S	2	ACTAA	LN:i:5	KC:i:1	km:f:1.0
+L	2	+	0	+	4M
+L	2	+	1	-	4M
