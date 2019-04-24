@@ -1,7 +1,7 @@
 CC=g++
 CFLAGS=-c -w -std=c++11
 
-SOURCES=src/main.cpp
+SOURCES=main.cpp
 OBJECTS=$(SOURCES:.cpp=.o)
 EXECUTABLE=main.out
 
@@ -19,7 +19,8 @@ clean:
 .SILENT:run
 
 run:
-	./main.out
+	./main.out > myout.txt
+	cat myout.txt
 	#./main.out < input.txt > myout.txt ;\
 	#cat myout.txt ;\
 	#echo "\n" ;
