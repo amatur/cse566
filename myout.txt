@@ -1,3 +1,0 @@
-unitigs.fa
-file opened
->0 LN:i:13 KC:i:12 km:f:1.3  L:-:0:- L:-:2:-  L:+:0:+ L:+:1:- >1 LN:i:5 KC:i:1 km:f:1.0   L:+:0:- L:+:2:- >2 LN:i:5 KC:i:1 km:f:1.0   L:+:0:+ L:+:1:- Created the data array

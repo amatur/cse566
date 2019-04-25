@@ -9,6 +9,9 @@
 #include<set>
 #include <sstream>
 #include<algorithm>
+#include <cstdlib>
+
+
 
 using namespace std;
 
@@ -34,6 +37,30 @@ vector<int> orphanedLink;
 vector<int> branchitigs;
 vector<vector<edge_t> > adjList;
 
+
+inline string plus_strings(const string& a, const string& b, size_t kmersize)
+{
+	if (a == "") return b;
+	if (b == "") return a;
+	string ret = a + b.substr(kmersize - 1, b.length() - (kmersize - 1));
+	return ret;
+}
+
+string delSpaces(string &str)
+{
+   str.erase(std::remove(str.begin(), str.end(), ' '), str.end());
+   return str;
+}
+
+bool charToBool(char c)
+{
+    if(c=='+'){
+        return true;
+    }else{
+        if(c!='-') cout<<"ERRRRRROOR!"<<endl;
+        return false;
+    }
+}
 
 void printGraph(map<string, set<string> > adjList){
 
@@ -113,22 +140,34 @@ map<string, set<string> > makeDBGfromKmers(set<string> kmer_set, int k){
 }
 
 
-
-string delSpaces(string &str)
-{
-   str.erase(std::remove(str.begin(), str.end(), ' '), str.end());
-   return str;
+int countInArcs(int node){
+    int count;
+    string line;
+    string countFile = "incount.txt";
+    string inputFile = "unitigs.fa";
+    ostringstream stringStream;
+    stringStream << "grep -o -i :"<<node<<": "<<inputFile<<" | wc -l > "<<countFile;
+    string copyOfStr = stringStream.str();
+    system(copyOfStr.c_str());
+    ifstream cf;
+    cf.open(countFile);
+    getline(cf , line);
+    line = delSpaces(line);
+    sscanf (line.c_str(),"%d",  &count);
+    cf.close();
+    return count;
+    //system("grep -o -i :2: unitigs.fa | wc -l > incount.txt");
 }
 
-bool charToBool(char c)
-{
-    if(c=='+'){
-        return true;
-    }else{
-        if(c!='-') cout<<"ERRRRRROOR!"<<endl;
-        return false;
-    }
+int countOutArcs(int node){
+    return (adjList.at(node)).size();
 }
+void computeYtoV(){
+
+
+
+}
+
 
 
 int get_data(const string& unitigFileName,
@@ -171,7 +210,6 @@ int get_data(const string& unitigFileName,
 
             unitig_struct_t unitig_struct;
 
-            //cout<<kcline<<endl; //KC:i:12
             sscanf (lnline,"%*5c %d", &unitig_struct.ln);
             sscanf (kcline,"%*5c %d", &unitig_struct.kc);
             sscanf (kmline,"%*5c %f", &unitig_struct.km);
@@ -194,11 +232,10 @@ int get_data(const string& unitigFileName,
 
             }
             adjList.push_back(edges);
+            cout<<((adjList.at(0)).size())<<endl;
             // for (edge_t e: edges){
             //     cout<<int(e.left)<<","<<int(e.right)<< " "<<e.toNode<<endl;
             // }
-
-            //cout<<unitig_struct.km<<endl;
 
 	   		unitig_struct.serial = nodeNum;
 	   		getline(unitigFile , unitig_struct.sequence); // this is the actual string
@@ -232,8 +269,16 @@ void print_maximal_unitigs(const string& unitigFileName)
 	}
 }
 
+
+
 int main(int argc, char** argv)
 {
+
+    //grep -o -i iphone Tweet_Data | wc -l
+
+
+    //system("grep -rIhEo \"\\b[a-zA-Z0-9.-]+\\@[a-zA-Z0-9.-]+\\/[a-zA-Z0-9.-]+\\b\" /home/*.txt > email.txt");
+
     uint64_t char_count;
     string unitigFileName;
 
@@ -256,12 +301,17 @@ int main(int argc, char** argv)
     //unitigFileName = "test/test3.unitigs.fa";
     unitigFileName = "unitigs.fa";
 
-	cout << unitigFileName << endl;
 
 	if (EXIT_FAILURE == get_data(unitigFileName, data, unitigs, char_count))
 	{
 		return EXIT_FAILURE;
 	}
+
+
+    //cout<<"HHHH "<<countInArcs(0)<<endl;
+    cout<<"Out arc of 0 "<<countOutArcs(2)<<endl;
+	cout << unitigFileName << endl;
+
 
 	// report some information.
 	//cout << "Time for loading the data: " << readTimer() - startTime << "sec" << endl;

@@ -1,0 +1,10 @@
+called: /usr/bin/g++
+	/Users/Sherlock/Box Sync/Wartik Research/Class Project/cse566
+	/usr/bin/g++
+	-c
+	-w
+	-std=c++11
+	main.cpp
+	-o
+	main.o
+
