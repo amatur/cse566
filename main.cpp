@@ -280,12 +280,14 @@ public:
                                 nodeSign[x] = yEdge.left;
                                 nodeSign[y] = yEdge.right;
                                 p[y] = x;
+                                saturated[x] = true;    //found a child
                             }else if(nodeSign[x] == yEdge.left){
                                  // case 2: child has grandparent, my parent exists
                                 nodeSign[y] = yEdge.right;
                                 p[y] = x;
+                                saturated[x] = true;  //found a child
                             }
-
+                            // ei 2 case er konotatei porenai, tahole oke home dite parchi na
                         }
                     }
                 }
