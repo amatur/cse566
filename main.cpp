@@ -134,6 +134,8 @@ inline char boolToCharSign(bool sign){
    return (sign == true) ? '+' : '-';
 }
 
+
+// @@ --- ALL PRINTING CODE --- //
 void printGraph(vector<vector<edge_t> > adjList){
     for (int i = 0; i < adjList.size(); i++) {
         cout<<i<<"# ";
@@ -141,6 +143,13 @@ void printGraph(vector<vector<edge_t> > adjList){
             cout<<boolToCharSign(edge.left)<<":"<<edge.toNode<<":"<<boolToCharSign(edge.right)<<", ";
         }
         cout<<endl;
+    }
+}
+void printAllSequences(vector<unitig_struct_t> unitigs){
+    for (unitig_struct_t unitig : unitigs) {
+        cout<<unitig.serial<<": "<<unitig.ln<<" "<<unitig.sequence.length()<<endl; //sequence only^
+        // full print
+        //cout<<unitig.serial<<": "<<unitig.ln<<" "<<unitig.sequence.length()<<":"<<unitig.sequence<<endl;
     }
 }
 
@@ -197,17 +206,7 @@ public:
                 s.push(xEdge);
 
                 vector<edge_t> adjx = adjList.at(x);
-                int t = x;
-                if(adjx.size() == 0){
-                    while(p[t]!=-1){
-                         cout<<p[t]<<" ";
-                         t = p[t];
-                    }
-
-                }
-                cout<<endl;
-
-
+  
                 for(edge_t edge: adjx ){
                     int y = edge.toNode;
                     edge_t yEdge;
@@ -308,20 +307,16 @@ int get_data(const string& unitigFileName,
     char kcline[20];
     char kmline[20];
     char edgesline[100000];
-    char c;
-    int kc;
-    int km;
     bool doCont = false;
 
     getline(unitigFile, line);
 
 
     do {
-        cout << line << endl;
-        sscanf(line.c_str(), "%*c %d %s  %s  %s %[^\n]s", &nodeNum, lnline, kcline, kmline, edgesline);
-        //>0 LN:i:13 KC:i:12 km:f:1.3  L:-:0:- L:-:2:-  L:+:0:+ L:+:1:-
-
         unitig_struct_t unitig_struct;
+        
+        sscanf(line.c_str(), "%*c %d %s  %s  %s %[^\n]s", &unitig_struct.serial, lnline, kcline, kmline, edgesline);
+        //>0 LN:i:13 KC:i:12 km:f:1.3  L:-:0:- L:-:2:-  L:+:0:+ L:+:1:-
 
         sscanf(lnline, "%*5c %d", &unitig_struct.ln);
         sscanf(kcline, "%*5c %d", &unitig_struct.kc);
@@ -345,12 +340,7 @@ int get_data(const string& unitigFileName,
         }
         adjList.push_back(edges);
 
-        // for (edge_t e: edges){
-        //     cout<<int(e.left)<<","<<int(e.right)<< " "<<e.toNode<<endl;
-        // }
-
-        unitig_struct.serial = nodeNum;
-
+        
         doCont = false;
         while (getline(unitigFile, line)) {
             if (line.substr(0, 1).compare(">")) {
@@ -373,19 +363,15 @@ int main(int argc, char** argv) {
     uint64_t char_count;
     uchar *data = NULL;
 
-    double startTime = readTimer();
-
-    cout << "Starting reading " << unitigFileName << endl;
+    cout << "Starting reading file: " << unitigFileName << endl;
     if (EXIT_FAILURE == get_data(unitigFileName, data, unitigs, char_count)) {
         return EXIT_FAILURE;
     }
     
     Graph G;
-    cout<<G.V;
-    
+    cout<<G.V<<endl;
+        
     printGraph(adjList);
-    
-
-
+    printAllSequences(unitigs);
     return EXIT_SUCCESS;
 }

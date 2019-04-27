@@ -20,7 +20,7 @@ clean:
 
 run:
 	./main.out > myout.txt
-	cat myout.txt
+	#cat myout.txt
 	#./main.out < input.txt > myout.txt ;\
 	#cat myout.txt ;\
 	#echo "\n" ;
