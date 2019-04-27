@@ -51,7 +51,7 @@ typedef struct {
 
 
 // ------- PARAMETERS -------- //
-int k = 21;
+int k = 11;
 string  unitigFileName  = "data/list_reads.unitigs.fa";
 
 
@@ -59,6 +59,7 @@ vector<vector<edge_t> > adjList;
 vector<vector<edge_t> > newAdjList;
 vector<edge_both_t> resolveLaterEdges;
 vector<unitig_struct_t> unitigs;
+vector<string> newSequences;
 
 
 inline string plus_strings(const string& a, const string& b, size_t kmersize) {
@@ -223,9 +224,16 @@ public:
                 // p[x] != -1, so I won't be the representative/head of a newHome. I just get added to my parent's newHome.
                 
                 
+                
                 int u = unitigs.at(x).ln; //unitig length
                 if(p[x] == -1){
-                    oldToNew[x].serial = countNewNode++; //start at 0                  
+                    
+                    oldToNew[x].serial = countNewNode++; //start at 0   
+                    //make the sequence
+                    
+                    //NOT CORRECT
+                    newSequences.push_back(unitigs.at(x).sequence);
+                    
                     oldToNew[x].startPos = 1;
                     if(u <= k){
                         oldToNew[x].endPos = 1; // do we actually see this?
@@ -235,6 +243,7 @@ public:
                     }
                     
                 }else{
+                    
                     oldToNew[x].serial = oldToNew[p[x]].serial;
                     oldToNew[x].startPos = oldToNew[p[x]].endPos + 1;
                      if(u <= k){
@@ -243,6 +252,16 @@ public:
                     }else{
                         oldToNew[x].endPos =  u - k + (oldToNew[x].startPos); //check correctness
                     }
+                    
+                    // I know what's my new home now
+                    // more complicated than this
+                    string parentSeq = newSequences.at(oldToNew[x].serial);
+                    string childSeq = unitigs.at(x).sequence;
+//                    if(xEdge.left = false){
+//                        parentSeq = reverseComplement(parentSeq);
+//                    }
+                    // NOT CORRECT, just for testing now
+                    newSequences.at(oldToNew[x].serial) = plus_strings(parentSeq, childSeq, k);
                 }
                 
                 
@@ -281,6 +300,8 @@ public:
                                 nodeSign[y] = yEdge.right;
                                 p[y] = x;
                                 saturated[x] = true;    //found a child
+                                
+                                
                             }else if(nodeSign[x] == yEdge.left){
                                  // case 2: child has grandparent, my parent exists
                                 nodeSign[y] = yEdge.right;
@@ -313,6 +334,11 @@ public:
              }
          }
 
+        for (edge_both_t e : resolveLaterEdges) {
+             
+        }
+
+         
     }
 
     ~Graph(){
@@ -429,10 +455,33 @@ int main(int argc, char** argv) {
         return EXIT_FAILURE;
     }
     
+    
+    
     Graph G;
     cout<<G.V<<endl;
-        
-    printGraph(adjList);
-    printAllSequences(unitigs);
+    
+    G.DFS();
+    
+    list<int> *newToOld = new list<int>[G.countNewNode]; 
+    
+    //int newToOld = new int[G.V];
+    for (int i = 0; i < G.V; i++) {
+        newToOld[G.oldToNew[i].serial].push_back(i); 
+    }
+    
+    cout<<"Number of OLD nodes: "<<G.V<<endl;
+    cout<<"Number of new nodes: "<<G.countNewNode<<endl;
+    
+    delete [] newToOld;
+
+//    for (int i = 0; i < newSequences.size(); i++) {
+//        //cout<< i<< " " <<newSequences.at(i)<<endl;
+//        cout<<i<<" "<<newSequences.at(i).length()<<endl;
+//    }
+    cout<<"Num edges: " <<resolveLaterEdges.size();
+
+    
+    //printGraph(adjList);
+    //printAllSequences(unitigs);
     return EXIT_SUCCESS;
 }
