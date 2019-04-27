@@ -1,3 +1,51 @@
+
+
+//
+//
+//int glob = 0;
+//vector<string> DFS(int k, map<string, vector<string> > & adjList, string v, vector<string> circuit){
+//    glob++;
+//
+//    vector<string> circuitLocal(circuit.begin(),circuit.end());
+//
+//    if(adjList[v].size() != 0){
+//        int n = adjList[v].size() ;
+//        int i = n-1;
+//        while(true){
+//            if(i==-1) break;
+//            string neighborString = adjList[v].at(i);
+//
+//            //remove edge
+//            circuitLocal.push_back(adjList[v].at(i));
+//
+//            adjList[v].erase(adjList[v].begin() + i);
+//            DFS(k, adjList, neighborString, circuitLocal);
+//
+//            adjList[v].push_back(neighborString);
+//            circuitLocal.pop_back();
+//
+//            i--;
+//        }
+//    }else{
+//        if(circuitLocal.size() == kmerList.size()+1){
+//            for (int i = 0; i<circuitLocal.size(); i++) {
+//                //cout<<circuitLocal.at(i)<< " ";
+//            }
+//            string out = "";
+//            for (int i = 0; i<kmerList.size(); i++) {
+//                out+=circuitLocal.at(i)[0];
+//            }
+//            results.insert(out);
+//
+//        }
+//    }
+//    return circuit;
+//}
+
+
+
+
+
 /*
  * To change this license header, choose License Headers in Project Properties.
  * To change this template file, choose Tools | Templates

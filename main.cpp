@@ -15,20 +15,12 @@
 #include <unordered_map>
 using namespace std;
 
-int k = 21;
-
-
 typedef unsigned char uchar;
-
 typedef struct {
     int serial;
     int startPos;
     int endPos;
 } new_node_info_t;
-
-
-
-
 typedef struct {
     int serial;
     string sequence;
@@ -36,14 +28,12 @@ typedef struct {
     int kc;
     float km;
 } unitig_struct_t;
-
 typedef struct {
     //1 means +, 0 means -
     bool left;
     bool right;
     int toNode;
 } edge_t;
-
 typedef struct {
     //1 means +, 0 means -
     bool left;
@@ -53,11 +43,16 @@ typedef struct {
     int kmerEndIndex;
 } newEdge_t;
 
+
+// ------- PARAMETERS -------- //
+int k = 21;
 string  unitigFileName  = "data/list_reads.unitigs.fa";
+
 
 vector<vector<edge_t> > adjList;
 vector<vector<edge_t> > newAdjList;
 vector<edge_t> resolveLaterEdges;
+vector<unitig_struct_t> unitigs;
 
 
 inline string plus_strings(const string& a, const string& b, size_t kmersize) {
@@ -263,6 +258,8 @@ public:
     ~Graph(){
         delete [] color;
         delete [] p;
+        delete [] nodeSign;
+        delete [] oldToNew;
     }
 };
 
@@ -372,58 +369,9 @@ int get_data(const string& unitigFileName,
 }
 
 
-//
-//
-//int glob = 0;
-//vector<string> DFS(int k, map<string, vector<string> > & adjList, string v, vector<string> circuit){
-//    glob++;
-//
-//    vector<string> circuitLocal(circuit.begin(),circuit.end());
-//
-//    if(adjList[v].size() != 0){
-//        int n = adjList[v].size() ;
-//        int i = n-1;
-//        while(true){
-//            if(i==-1) break;
-//            string neighborString = adjList[v].at(i);
-//
-//            //remove edge
-//            circuitLocal.push_back(adjList[v].at(i));
-//
-//            adjList[v].erase(adjList[v].begin() + i);
-//            DFS(k, adjList, neighborString, circuitLocal);
-//
-//            adjList[v].push_back(neighborString);
-//            circuitLocal.pop_back();
-//
-//            i--;
-//        }
-//    }else{
-//        if(circuitLocal.size() == kmerList.size()+1){
-//            for (int i = 0; i<circuitLocal.size(); i++) {
-//                //cout<<circuitLocal.at(i)<< " ";
-//            }
-//            string out = "";
-//            for (int i = 0; i<kmerList.size(); i++) {
-//                out+=circuitLocal.at(i)[0];
-//            }
-//            results.insert(out);
-//
-//        }
-//    }
-//    return circuit;
-//}
-
-
 int main(int argc, char** argv) {
-
     uint64_t char_count;
-
     uchar *data = NULL;
-    vector<unitig_struct_t> unitigs;
-
-
-    //unitigFileName = "unitigs.fa";
 
     double startTime = readTimer();
 
@@ -437,17 +385,7 @@ int main(int argc, char** argv) {
     
     printGraph(adjList);
     
-    //cout<<"In arc of 0 "<<countInArcs(0)<<endl;
-    //cout << "Out arc of 16 " << countOutArcs(16) << endl;
 
-
-    // report some information.
-    // cout << "Time for loading the data: " << readTimer() - startTime << "sec" << endl;
-
-    // startTime = readTimer();
-    // DO THE WORK
-    // cout << "Time for unitigs: " << readTimer() - startTime << "sec" << endl;
-    // cout << "Time: " << currentDateTime();
 
     return EXIT_SUCCESS;
 }
