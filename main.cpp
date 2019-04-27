@@ -16,11 +16,13 @@
 using namespace std;
 
 typedef unsigned char uchar;
+
 typedef struct {
     int serial;
     int startPos;
     int endPos;
 } new_node_info_t;
+
 typedef struct {
     int serial;
     string sequence;
@@ -28,12 +30,14 @@ typedef struct {
     int kc;
     float km;
 } unitig_struct_t;
+
 typedef struct {
     //1 means +, 0 means -
     bool left;
     bool right;
     int toNode;
 } edge_t;
+
 typedef struct {
     //1 means +, 0 means -
     edge_t edge;
@@ -52,7 +56,7 @@ typedef struct {
 
 // ------- PARAMETERS -------- //
 int k = 11;
-string  unitigFileName  = "data/list_reads.unitigs.fa";
+string unitigFileName = "data/list_reads.unitigs.fa";
 
 
 vector<vector<edge_t> > adjList;
@@ -60,7 +64,6 @@ vector<vector<edge_t> > newAdjList;
 vector<edge_both_t> resolveLaterEdges;
 vector<unitig_struct_t> unitigs;
 vector<string> newSequences;
-
 
 inline string plus_strings(const string& a, const string& b, size_t kmersize) {
     if (a == "") return b;
@@ -137,31 +140,32 @@ int countOutArcs(int node) {
     return (adjList.at(node)).size();
 }
 
-inline char boolToCharSign(bool sign){
-   return (sign == true) ? '+' : '-';
+inline char boolToCharSign(bool sign) {
+    return (sign == true) ? '+' : '-';
 }
 
 
 // @@ --- ALL PRINTING CODE --- //
-void printGraph(vector<vector<edge_t> > adjList){
+
+void printGraph(vector<vector<edge_t> > adjList) {
     for (int i = 0; i < adjList.size(); i++) {
-        cout<<i<<"# ";
-        for(edge_t edge : adjList.at(i)){
-            cout<<boolToCharSign(edge.left)<<":"<<edge.toNode<<":"<<boolToCharSign(edge.right)<<", ";
+        cout << i << "# ";
+        for (edge_t edge : adjList.at(i)) {
+            cout << boolToCharSign(edge.left) << ":" << edge.toNode << ":" << boolToCharSign(edge.right) << ", ";
         }
-        cout<<endl;
+        cout << endl;
     }
 }
-void printAllSequences(vector<unitig_struct_t> unitigs){
+
+void printAllSequences(vector<unitig_struct_t> unitigs) {
     for (unitig_struct_t unitig : unitigs) {
-        cout<<unitig.serial<<": "<<unitig.ln<<" "<<unitig.sequence.length()<<endl; //sequence only^
+        cout << unitig.serial << ": " << unitig.ln << " " << unitig.sequence.length() << endl; //sequence only^
         // full print
         //cout<<unitig.serial<<": "<<unitig.ln<<" "<<unitig.sequence.length()<<":"<<unitig.sequence<<endl;
     }
 }
 
-
-class Graph{
+class Graph {
 public:
     int V = adjList.size();
     char* color;
@@ -171,15 +175,16 @@ public:
     int time;
     bool* saturated;
     int countNewNode;
-    
-    Graph(){
+
+    Graph() {
         color = new char[V];
         p = new int[V];
         nodeSign = new bool[V];
         oldToNew = new new_node_info_t[V];
         saturated = new bool[V];
-        for(int i = 0; i<V ; i++){
+        for (int i = 0; i < V; i++) {
             oldToNew[i].serial = -1;
+            saturated[i] = false;
         }
     }
 
@@ -190,130 +195,130 @@ public:
 
     // The function to check if edge u-v can be considered as next edge in
     // Euler Tout
-//    bool isValidNextEdge(int u, int v)
-//    {
-//      // The edge u-v is valid in one of the following two cases:
-//
-//      // 1) If v is the only adjacent vertex of u
-//        return edgeFrom[u] = adjX.at(1).to;
-//   }
+    //    bool isValidNextEdge(int u, int v)
+    //    {
+    //      // The edge u-v is valid in one of the following two cases:
+    //
+    //      // 1) If v is the only adjacent vertex of u
+    //        return edgeFrom[u] = adjX.at(1).to;
+    //   }
 
-
-    void DFS_visit(int u){
+    void DFS_visit(int u) {
         stack<edge_t> s;
 
         edge_t uEdge;
         uEdge.toNode = u;
         s.push(uEdge);
 
-        while(!s.empty()){
+        while (!s.empty()) {
             edge_t xEdge = s.top();
             int x = xEdge.toNode;
             s.pop();
-            if(color[x] == 'w'){
+            if (color[x] == 'w') {
                 //Original DFS code
                 time = time + 1;
                 color[x] = 'g';
                 s.push(xEdge);
                 vector<edge_t> adjx = adjList.at(x);
-                
-                
+
+
                 // For a white x
                 // p[x] = -1, it can happen in two way, I am the first one ever in this con.component, or no one wanted to take me
                 // either way, if p[x] = -1, i can be representative of a new node in new graph
                 // p[x] != -1, so I won't be the representative/head of a newHome. I just get added to my parent's newHome.
-                
-                
-                
+
+
+
                 int u = unitigs.at(x).ln; //unitig length
-                if(p[x] == -1){
-                    
+                if (p[x] == -1) {
+
                     oldToNew[x].serial = countNewNode++; //start at 0   
                     //make the sequence
-                    
+
                     //NOT CORRECT
                     newSequences.push_back(unitigs.at(x).sequence);
-                    
+
                     oldToNew[x].startPos = 1;
-                    if(u <= k){
+                    if (u <= k) {
                         oldToNew[x].endPos = 1; // do we actually see this?
-                        cout<< "u<=k???"<<endl;
-                    }else{
+                        //cout<< "u<=k???"<<endl;
+                    } else {
                         oldToNew[x].endPos = u - k + 1;
                     }
-                    
-                }else{
-                    
+
+                } else {
+
                     oldToNew[x].serial = oldToNew[p[x]].serial;
                     oldToNew[x].startPos = oldToNew[p[x]].endPos + 1;
-                     if(u <= k){
+                    if (u <= k) {
                         oldToNew[x].endPos = oldToNew[x].startPos + 1; // do we actually see this?
-                        cout<< "u<=k???"<<endl;
-                    }else{
-                        oldToNew[x].endPos =  u - k + (oldToNew[x].startPos); //check correctness
+                        //cout<< "u<=k???"<<endl;
+                    } else {
+                        oldToNew[x].endPos = u - k + (oldToNew[x].startPos); //check correctness
                     }
-                    
+
                     // I know what's my new home now
                     // more complicated than this
                     string parentSeq = newSequences.at(oldToNew[x].serial);
                     string childSeq = unitigs.at(x).sequence;
-//                    if(xEdge.left = false){
-//                        parentSeq = reverseComplement(parentSeq);
-//                    }
+                    //                    if(xEdge.left = false){
+                    //                        parentSeq = reverseComplement(parentSeq);
+                    //                    }
                     // NOT CORRECT, just for testing now
                     newSequences.at(oldToNew[x].serial) = plus_strings(parentSeq, childSeq, k);
                 }
-                
-                
+
+
                 // x->y is the edge, x is the parent we are extending
-                for(edge_t yEdge: adjx ){
-                    int y = yEdge.toNode;
+                for (edge_t yEdge: adjx ) {  //edge_t yEdge = adjx.at(i);
                     
+                    int y = yEdge.toNode;
+
                     //Normal DFS
-                    if(color[y] == 'w'){
+                    if (color[y] == 'w') {
                         s.push(yEdge);
                     }
-                    
+
                     //Code for making new graph
-                    if(saturated[x]){
+                    if (saturated[x]) {
                         // ami saturated, ekhon just resolve later edge ber kora
                         // no need to check for consistency
-                        
+
                         edge_both_t e;
                         e.edge = yEdge;
                         e.fromNode = x;
                         resolveLaterEdges.push_back(e);
-                        
-                    
-                    }else{
+
+
+                    } else {
                         // amar nijer jayga thakle, mane ami jodi saturated na hoi 
                         // hunting for potential child
 
-                        if(color[y] == 'w'){
-                        // white mane pobitro homeless obosshoi, eke nite CHABO amar child hishebe
-                        // nite chacchi, but dekhte hobe she ki neyar moto kina
-                        // is it consistent?
-                        //2 case, my child will has grandparent or not
-                            if(p[x] == -1){
+                        if (color[y] == 'w') {
+                            // white mane pobitro homeless obosshoi, eke nite CHABO amar child hishebe
+                            // nite chacchi, but dekhte hobe she ki neyar moto kina
+                            // is it consistent?
+                            //2 case, my child will has grandparent or not
+                            if (p[x] == -1) {
                                 // case 1: child has no grandparent
                                 nodeSign[x] = yEdge.left;
                                 nodeSign[y] = yEdge.right;
                                 p[y] = x;
-                                saturated[x] = true;    //found a child
-                                
-                                
-                            }else if(nodeSign[x] == yEdge.left){
-                                 // case 2: child has grandparent, my parent exists
+                                saturated[x] = true; //found a child
+
+
+                            } else if (nodeSign[x] == yEdge.left) {
+                                // case 2: child has grandparent, my parent exists
                                 nodeSign[y] = yEdge.right;
                                 p[y] = x;
-                                saturated[x] = true;  //found a child
+                                saturated[x] = true; //found a child
                             }
                             // ei 2 case er konotatei porenai, tahole oke home dite parchi na
                         }
                     }
                 }
 
-            }else if(color[x] == 'g'){
+            } else if (color[x] == 'g') {
                 time = time + 1;
                 color[x] = 'b';
             }
@@ -321,27 +326,27 @@ public:
         }
     }
 
-    void DFS(){
+    void DFS() {
 
-         for(int i=0; i<V; i++){
-             color[i] = 'w';
-             p[i] = -1;
-         }
-
-         for(int i=0; i<V; i++){
-             if(color[i] == 'w'){
-                 DFS_visit(i);
-             }
-         }
-
-        for (edge_both_t e : resolveLaterEdges) {
-             
+        for (int i = 0; i < V; i++) {
+            color[i] = 'w';
+            p[i] = -1;
         }
 
-         
+        for (int i = 0; i < V; i++) {
+            if (color[i] == 'w') {
+                DFS_visit(i);
+            }
+        }
+
+        for (edge_both_t e : resolveLaterEdges) {
+
+        }
+
+
     }
 
-    ~Graph(){
+    ~Graph() {
         delete [] color;
         delete [] p;
         delete [] nodeSign;
@@ -349,15 +354,12 @@ public:
     }
 };
 
-
-
-
-int getNodeNumFromFile(string filename){
+int getNodeNumFromFile(string filename) {
     //grep '>' list_reads.unitigs.fa | tail -n 1
     int nodeCount;
     string countFile = "incount.txt";
     ostringstream stringStream;
-    stringStream << "grep '>' "<< filename << " | tail -n 1" << countFile;
+    stringStream << "grep '>' " << filename << " | tail -n 1" << countFile;
     string copyOfStr = stringStream.str();
     system(copyOfStr.c_str());
     ifstream cf;
@@ -401,7 +403,7 @@ int get_data(const string& unitigFileName,
 
     do {
         unitig_struct_t unitig_struct;
-        
+
         sscanf(line.c_str(), "%*c %d %s  %s  %s %[^\n]s", &unitig_struct.serial, lnline, kcline, kmline, edgesline);
         //>0 LN:i:13 KC:i:12 km:f:1.3  L:-:0:- L:-:2:-  L:+:0:+ L:+:1:-
 
@@ -427,7 +429,7 @@ int get_data(const string& unitigFileName,
         }
         adjList.push_back(edges);
 
-        
+
         doCont = false;
         while (getline(unitigFile, line)) {
             if (line.substr(0, 1).compare(">")) {
@@ -445,7 +447,6 @@ int get_data(const string& unitigFileName,
     return EXIT_SUCCESS;
 }
 
-
 int main(int argc, char** argv) {
     uint64_t char_count;
     uchar *data = NULL;
@@ -454,33 +455,65 @@ int main(int argc, char** argv) {
     if (EXIT_FAILURE == get_data(unitigFileName, data, unitigs, char_count)) {
         return EXIT_FAILURE;
     }
-    
-    
-    
+
+
+
     Graph G;
-    cout<<G.V<<endl;
-    
+    cout << G.V << endl;
+
     G.DFS();
-    
-    list<int> *newToOld = new list<int>[G.countNewNode]; 
-    
-    //int newToOld = new int[G.V];
+
+    list<int> *newToOld = new list<int>[G.countNewNode];
+
+    //count total number of edges
+    int E = 0;
     for (int i = 0; i < G.V; i++) {
-        newToOld[G.oldToNew[i].serial].push_back(i); 
+        E += adjList[i].size();
     }
-    
-    cout<<"Number of OLD nodes: "<<G.V<<endl;
-    cout<<"Number of new nodes: "<<G.countNewNode<<endl;
-    
-    delete [] newToOld;
 
-//    for (int i = 0; i < newSequences.size(); i++) {
-//        //cout<< i<< " " <<newSequences.at(i)<<endl;
-//        cout<<i<<" "<<newSequences.at(i).length()<<endl;
-//    }
-    cout<<"Num edges: " <<resolveLaterEdges.size();
+    int E_new = resolveLaterEdges.size();
+    int V = G.V;
+    int V_new = G.countNewNode;
 
+    int C = 0;
+    int C_new = 0;
+     for (unitig_struct_t unitig: unitigs) {
+         C += unitig.ln;
+      }
     
+      for (string s: newSequences) {
+         C_new += s.length();
+      }
+    
+
+     // PRINT NEW GRAPH
+        for (int i = 0; i < G.V; i++) {
+            newToOld[G.oldToNew[i].serial].push_back(i); 
+        }
+    
+    
+    
+        for (int i = 0; i < newSequences.size(); i++) {
+            
+            //cout<< i<< " " <<newSequences.at(i)<<endl;
+            cout<<i<<" "<<newSequences.at(i).length()<<endl;
+        }
+        delete [] newToOld;
+
+
+
+
+    cout << "V: " << V << endl;
+    cout << "V_new: " << V_new << endl;
+    cout << "E: " << E << endl;
+    cout << "E_new: " << E_new << endl;
+    cout << "C: " << C << endl;
+    cout << "C_new: " << C_new << endl;
+    
+    int save = (C - C_new)*1 + (E - E_new)*(8+2);
+    int overhead = (E_new)*4;
+    cout<<"Space saved: " << save - overhead<< " bytes."<<endl;
+
     //printGraph(adjList);
     //printAllSequences(unitigs);
     return EXIT_SUCCESS;
