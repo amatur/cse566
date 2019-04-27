@@ -36,6 +36,12 @@ typedef struct {
 } edge_t;
 typedef struct {
     //1 means +, 0 means -
+    edge_t edge;
+    int fromNode;
+} edge_both_t;
+
+typedef struct {
+    //1 means +, 0 means -
     bool left;
     bool right;
     int toNode;
@@ -51,7 +57,7 @@ string  unitigFileName  = "data/list_reads.unitigs.fa";
 
 vector<vector<edge_t> > adjList;
 vector<vector<edge_t> > newAdjList;
-vector<edge_t> resolveLaterEdges;
+vector<edge_both_t> resolveLaterEdges;
 vector<unitig_struct_t> unitigs;
 
 
@@ -162,12 +168,15 @@ public:
     bool* nodeSign;
     new_node_info_t* oldToNew;
     int time;
-
+    bool* saturated;
+    int countNewNode;
+    
     Graph(){
         color = new char[V];
         p = new int[V];
         nodeSign = new bool[V];
         oldToNew = new new_node_info_t[V];
+        saturated = new bool[V];
         for(int i = 0; i<V ; i++){
             oldToNew[i].serial = -1;
         }
@@ -201,33 +210,83 @@ public:
             int x = xEdge.toNode;
             s.pop();
             if(color[x] == 'w'){
+                //Original DFS code
                 time = time + 1;
                 color[x] = 'g';
                 s.push(xEdge);
-
                 vector<edge_t> adjx = adjList.at(x);
-  
-                for(edge_t edge: adjx ){
-                    int y = edge.toNode;
-                    edge_t yEdge;
-                    yEdge.toNode = y;
-
+                
+                
+                // For a white x
+                // p[x] = -1, it can happen in two way, I am the first one ever in this con.component, or no one wanted to take me
+                // either way, if p[x] = -1, i can be representative of a new node in new graph
+                // p[x] != -1, so I won't be the representative/head of a newHome. I just get added to my parent's newHome.
+                
+                
+                int u = unitigs.at(x).ln; //unitig length
+                if(p[x] == -1){
+                    oldToNew[x].serial = countNewNode++; //start at 0                  
+                    oldToNew[x].startPos = 1;
+                    if(u <= k){
+                        oldToNew[x].endPos = 1; // do we actually see this?
+                        cout<< "u<=k???"<<endl;
+                    }else{
+                        oldToNew[x].endPos = u - k + 1;
+                    }
+                    
+                }else{
+                    oldToNew[x].serial = oldToNew[p[x]].serial;
+                    oldToNew[x].startPos = oldToNew[p[x]].endPos + 1;
+                     if(u <= k){
+                        oldToNew[x].endPos = oldToNew[x].startPos + 1; // do we actually see this?
+                        cout<< "u<=k???"<<endl;
+                    }else{
+                        oldToNew[x].endPos =  u - k + (oldToNew[x].startPos); //check correctness
+                    }
+                }
+                
+                
+                // x->y is the edge, x is the parent we are extending
+                for(edge_t yEdge: adjx ){
+                    int y = yEdge.toNode;
+                    
+                    //Normal DFS
                     if(color[y] == 'w'){
-                        //adding modification
-                        //check if it is a valid walk
-                        //valid if
-                        if(p[x] == -1){
-                            nodeSign[x] = edge.left;
-                            nodeSign[y] = edge.right;
-                            p[y] = x;
-                            s.push(yEdge);
-                        }else if(nodeSign[x] == edge.left){
-                            nodeSign[y] = edge.right;
-                            p[y] = x;
-                            s.push(yEdge);
+                        s.push(yEdge);
+                    }
+                    
+                    //Code for making new graph
+                    if(saturated[x]){
+                        // ami saturated, ekhon just resolve later edge ber kora
+                        // no need to check for consistency
+                        
+                        edge_both_t e;
+                        e.edge = yEdge;
+                        e.fromNode = x;
+                        resolveLaterEdges.push_back(e);
+                        
+                    
+                    }else{
+                        // amar nijer jayga thakle, mane ami jodi saturated na hoi 
+                        // hunting for potential child
+
+                        if(color[y] == 'w'){
+                        // white mane pobitro homeless obosshoi, eke nite CHABO amar child hishebe
+                        // nite chacchi, but dekhte hobe she ki neyar moto kina
+                        // is it consistent?
+                        //2 case, my child will has grandparent or not
+                            if(p[x] == -1){
+                                // case 1: child has no grandparent
+                                nodeSign[x] = yEdge.left;
+                                nodeSign[y] = yEdge.right;
+                                p[y] = x;
+                            }else if(nodeSign[x] == yEdge.left){
+                                 // case 2: child has grandparent, my parent exists
+                                nodeSign[y] = yEdge.right;
+                                p[y] = x;
+                            }
+
                         }
-
-
                     }
                 }
 
