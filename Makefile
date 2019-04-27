@@ -14,7 +14,7 @@ $(EXECUTABLE): $(OBJECTS)
 	$(CC) $(CFLAGS) $< -o $@
 
 clean:
-	rm -f *.o main.out myout.txt
+	rm -f *.o main.out incount.txt myout.txt
 
 .SILENT:run
 
