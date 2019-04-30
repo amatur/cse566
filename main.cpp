@@ -1,5 +1,5 @@
-// --- VERSION 1.1 ----
-// Statistics with incorrect edge sign label
+// --- VERSION 1.2 ----
+// Statistics with correct edge sign label, sequence stitching still not done
 
 #include <fstream>
 #include <iostream>
@@ -49,9 +49,7 @@ typedef struct {
 
 typedef struct {
     //1 means +, 0 means -
-    bool left;
-    bool right;
-    int toNode;
+    edge_t edge;
     int kmerStartIndex;
     int kmerEndIndex;
 } newEdge_t;
@@ -63,7 +61,7 @@ string unitigFileName = "data/list_reads.unitigs.fa";
 
 
 vector<vector<edge_t> > adjList;
-vector<vector<edge_t> > newAdjList;
+vector<vector<newEdge_t> > newAdjList;
 vector<edge_both_t> resolveLaterEdges;
 vector<unitig_struct_t> unitigs;
 vector<string> newSequences;
@@ -142,6 +140,25 @@ int countInArcs(int node) {
 int countOutArcs(int node) {
     return (adjList.at(node)).size();
 }
+
+int maximumUnitigLength() {
+    //grep '>' list_reads.unitigs.fa | cut -d : -f3 | cut -d ' ' -f1 | sort -n | tail -n 1 > incount.txt
+    int count;
+    string line;
+    string countFile = "incount.txt";
+    ostringstream stringStream;
+    stringStream<<"grep '>' "<<unitigFileName<<" | cut -d : -f3 | cut -d ' ' -f1 | sort -n | tail -n 1 > "<<countFile;
+    string copyOfStr = stringStream.str();
+    system(copyOfStr.c_str());
+    ifstream cf;
+    cf.open(countFile);
+    getline(cf, line);
+    line = delSpaces(line);
+    sscanf(line.c_str(), "%d", &count);
+    cf.close();
+    return count;
+}
+
 
 inline char boolToCharSign(bool sign) {
     return (sign == true) ? '+' : '-';
@@ -327,9 +344,35 @@ public:
                 DFS_visit(i);
             }
         }
+        
+        for(int i = 0; i< countNewNode; i++){
+            newAdjList.push_back(vector<newEdge_t>());
+        }
+        
 
         for (edge_both_t e : resolveLaterEdges) {
-
+            // e.start -> e.end : they have different newHome
+            // look at the sign of both end points. if from sign and edge from are not equal, then revert the edge label
+            // We consider that ACT and CTT has an edge.
+            // ACT(+)  (+)->(-)  AAG(+) : this is fine, just add the edge
+            // ACT(-)  (+)->(-)  AAG(+) : you need to convert it, because => AGT  (+)->(-)  AAG => this is not correct:
+            // to fix this AGT (-)->(-) AAG
+            // don't touch the node sign: just fix the edge signs 
+            if(nodeSign[e.fromNode] != e.edge.left){
+                e.edge.left = !e.edge.left;
+            }
+             if(nodeSign[e.edge.toNode] != e.edge.right){
+                e.edge.right = !e.edge.right;
+            }
+            
+            int x = e.fromNode;
+            int u = unitigs.at(x).ln;
+            newEdge_t newEdge;
+            newEdge.edge = e.edge;
+            newEdge.kmerEndIndex = oldToNew[x].endPos;
+            newEdge.kmerStartIndex = oldToNew[x].startPos;
+            
+            newAdjList[oldToNew[x].serial].push_back(newEdge);
         }
 
 
@@ -439,13 +482,16 @@ int get_data(const string& unitigFileName,
 int main(int argc, char** argv) {
     uint64_t char_count;
     uchar *data = NULL;
+    
+    
+    double startTime = readTimer();
 
     cout << "Starting reading file: " << unitigFileName << endl;
     if (EXIT_FAILURE == get_data(unitigFileName, data, unitigs, char_count)) {
         return EXIT_FAILURE;
     }
 
-
+    double TIME_READ_SEC = readTimer() - startTime;
 
     Graph G;
     cout << G.V << endl;
@@ -466,43 +512,66 @@ int main(int argc, char** argv) {
 
     int C = 0;
     int C_new = 0;
-     for (unitig_struct_t unitig: unitigs) {
-         C += unitig.ln;
-      }
-    
-      for (string s: newSequences) {
-         C_new += s.length();
-      }
-    
+    for (unitig_struct_t unitig : unitigs) {
+        C += unitig.ln;
+    }
 
-     // PRINT NEW GRAPH
-        for (int i = 0; i < G.V; i++) {
-            newToOld[G.oldToNew[i].serial].push_back(i); 
-        }
-    
-    
-    
-        for (int i = 0; i < newSequences.size(); i++) {
-            
-            //cout<< i<< " " <<newSequences.at(i)<<endl;
-            cout<<i<<" "<<newSequences.at(i).length()<<endl;
-        }
-        delete [] newToOld;
+    for (string s : newSequences) {
+        C_new += s.length();
+    }
 
 
+    // PRINT NEW GRAPH
+    for (int i = 0; i < G.V; i++) {
+        newToOld[G.oldToNew[i].serial].push_back(i);
+    }
+
+    //        for (int i = 0; i < newSequences.size(); i++) {
+    //            
+    //            //cout<< i<< " " <<newSequences.at(i)<<endl;
+    //            cout<<i<<" "<<newSequences.at(i).length()<<endl;
+    //        }
+    delete [] newToOld;
 
 
-    cout << "V: " << V << endl;
-    cout << "V_new: " << V_new << endl;
-    cout << "E: " << E << endl;
-    cout << "E_new: " << E_new << endl;
-    cout << "C: " << C << endl;
-    cout << "C_new: " << C_new << endl;
+    double TIME_TOTAL_SEC = readTimer() - startTime ;
+
     
-    int save = (C - C_new)*1 + (E - E_new)*(8+2);
-    int overhead = (E_new)*4;
-    cout<<"Space saved: " << save - overhead<< " bytes."<<endl;
+    // For collecting stats
+    int U_MAX = maximumUnitigLength();
+    int EDGE_INT_DTYPE_SIZE;
+    if (U_MAX - k + 1 > 0) {
+        EDGE_INT_DTYPE_SIZE = log2(U_MAX - k + 1);
+    } else {
+        EDGE_INT_DTYPE_SIZE = log2(k);
+    }
+    EDGE_INT_DTYPE_SIZE = ceil(EDGE_INT_DTYPE_SIZE / 8.0);
 
+
+    int ACGT_DTYPE_SIZE = 1; // 1 byte to store each char
+    int NODENUM_DTYPE_SIZE = 8; // 1 byte to store each char
+    int SIGN_DTYPE_SIZE = 1; // 1 byte for sign information (+,- can be stored in 1 byte)
+    int spaceBefore = C * ACGT_DTYPE_SIZE + E * (NODENUM_DTYPE_SIZE + SIGN_DTYPE_SIZE);
+    int save = (C - C_new) * ACGT_DTYPE_SIZE + (E - E_new)*(NODENUM_DTYPE_SIZE + SIGN_DTYPE_SIZE);
+    int overhead = (E_new)*(2 * EDGE_INT_DTYPE_SIZE);
+    float persaved = ((save - overhead)*1.0 / spaceBefore) * 100.0;
+
+//    cout << "Time for loading the data: " << TIME_READ_SEC << " sec" << endl;
+//    cout << "Total construction time: " << TIME_TOTAL_SEC<< " sec" << endl;
+//    cout << "V: " << V << endl;
+//    cout << "V_new: " << V_new << endl;
+//    cout << "E: " << E << endl;
+//    cout << "E_new: " << E_new << endl;
+//    cout << "C: " << C << endl;
+//    cout << "C_new: " << C_new << endl;
+//    cout << "Number of Bytes required for storing one edge start or end: " << EDGE_INT_DTYPE_SIZE << endl;
+//    cout << "Space saved: " << save - overhead << " bytes." << endl;
+//    cout << "Space before: " << spaceBefore << " bytes." << endl;
+//    cout << "Percent saved: " << ((save - overhead)*1.0 / spaceBefore) * 100.0 << "%" << endl;
+
+
+
+    printf("%d \t %d \t %d \t %d \t %d \t %d \t %f \t %f \t %.2f%% \t %d \t %d \t %f \t %f\n", V, V_new, E, E_new, C, C_new, spaceBefore / 1024.0, (save - overhead) / 1024.0, persaved, U_MAX, k, TIME_READ_SEC, TIME_TOTAL_SEC);
     //printGraph(adjList);
     //printAllSequences(unitigs);
     return EXIT_SUCCESS;

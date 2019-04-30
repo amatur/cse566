@@ -1,0 +1,16 @@
+Starting reading file: data/list_reads.unitigs.fa
+Complete reading input.
+Time for loading the data: 0.00255 sec
+109
+Total construction time: 0.002864 sec
+V: 109
+V_new: 54
+E: 389
+E_new: 179
+C: 6451
+C_new: 5901
+Number of Bytes required for storing one edge start or end: 1
+Space saved: 2082 bytes.
+Space before: 9952 bytes.
+Percent saved: 20.9204%
+109 	 54 	 389 	 179 	 6451 	 5901 	 9.718750 	 2.033203 	 20.92% 	 247 	 11 	 0.002550 	 0.002864
