@@ -1,3 +1,6 @@
+// --- VERSION 1.1 ----
+// Statistics with incorrect edge sign label
+
 #include <fstream>
 #include <iostream>
 #include <vector>
@@ -188,21 +191,6 @@ public:
         }
     }
 
-    //grey hole create representative
-    // ta na hole get representative
-
-
-
-    // The function to check if edge u-v can be considered as next edge in
-    // Euler Tout
-    //    bool isValidNextEdge(int u, int v)
-    //    {
-    //      // The edge u-v is valid in one of the following two cases:
-    //
-    //      // 1) If v is the only adjacent vertex of u
-    //        return edgeFrom[u] = adjX.at(1).to;
-    //   }
-
     void DFS_visit(int u) {
         stack<edge_t> s;
 
@@ -234,6 +222,7 @@ public:
 
                     oldToNew[x].serial = countNewNode++; //start at 0   
                     //make the sequence
+                    
 
                     //NOT CORRECT
                     newSequences.push_back(unitigs.at(x).sequence);
