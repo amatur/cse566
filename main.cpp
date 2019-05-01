@@ -1,4 +1,5 @@
-// --- VERSION 1.3 ----
+// --- VERSION 1.4 ----
+// Sequence stitching done, not sure if it is okay, works for toy example
 // Statistics with correct edge sign label, sequence stitching still not done, a lot of bugs fixed
 
 #include<cmath>
@@ -43,13 +44,11 @@ typedef struct {
 } edge_t;
 
 typedef struct {
-    //1 means +, 0 means -
     edge_t edge;
     int fromNode;
 } edge_both_t;
 
 typedef struct {
-    //1 means +, 0 means -
     edge_t edge;
     int kmerStartIndex;
     int kmerEndIndex;
@@ -57,8 +56,8 @@ typedef struct {
 
 
 // ------- PARAMETERS -------- //
-int k = 5;
-string unitigFileName = "data/list_reads.unitigs.fa";
+int K = 5;
+string UNITIG_FILE = "data/list_reads.unitigs.fa";
 
 
 vector<vector<edge_t> > adjList;
@@ -123,7 +122,7 @@ int countInArcs(int node) {
     string line;
     string countFile = "incount.txt";
     //string inputFile = "unitigs.fa";
-    string inputFile = unitigFileName;
+    string inputFile = UNITIG_FILE;
 
     ostringstream stringStream;
     stringStream << "grep -o -i :" << node << ": " << inputFile << " | wc -l > " << countFile;
@@ -148,7 +147,7 @@ int maximumUnitigLength() {
     string line;
     string countFile = "incount.txt";
     ostringstream stringStream;
-    stringStream<<"grep '>' "<<unitigFileName<<" | cut -d : -f3 | cut -d ' ' -f1 | sort -n | tail -n 1 > "<<countFile;
+    stringStream<<"grep '>' "<<UNITIG_FILE<<" | cut -d : -f3 | cut -d ' ' -f1 | sort -n | tail -n 1 > "<<countFile;
     string copyOfStr = stringStream.str();
     system(copyOfStr.c_str());
     ifstream cf;
@@ -228,52 +227,51 @@ public:
                 s.push(xEdge);
                 vector<edge_t> adjx = adjList.at(x);
                 
-
+                // Now our branching code ::
+                
                 // For a white x
-                // p[x] = -1, it can happen in two way, I am the first one ever in this con.component, or no one wanted to take me
-                // either way, if p[x] = -1, i can be representative of a new node in new graph
-                // p[x] != -1, so I won't be the representative/head of a newHome. I just get added to my parent's newHome.
-
-
-
+                // Consider 2 case:
+                // Case 1. p[x] = -1, it can happen in two way, x is the first one ever in this connected component, or no one wanted to take x
+                        // either way, if p[x] = -1, i can be representative of a new node in new graph
+                // Case 2. p[x] != -1, so x won't be the representative/head of a newHome. x just gets added to its parent's newHome.
                 int u = unitigs.at(x).ln; //unitig length
                 if (p[x] == -1) {
-
                     oldToNew[x].serial = countNewNode++; //start at 0   
                     //make the sequence
                     
-
                     //NOT CORRECT
                     newSequences.push_back(unitigs.at(x).sequence);
 
                     oldToNew[x].startPos = 1;
-                    if (u <= k) {
+                    if (u <= K) {
                         oldToNew[x].endPos = 1; // do we actually see this?
                         //cout<< "u<=k???"<<endl;
                     } else {
-                        oldToNew[x].endPos = u - k + 1;
+                        oldToNew[x].endPos = u - K + 1;
                     }
 
                 } else {
 
                     oldToNew[x].serial = oldToNew[p[x]].serial;
                     oldToNew[x].startPos = oldToNew[p[x]].endPos + 1;
-                    if (u <= k) {
+                    if (u <= K) {
                         oldToNew[x].endPos = oldToNew[x].startPos + 1; // do we actually see this?
                         //cout<< "u<=k???"<<endl;
                     } else {
-                        oldToNew[x].endPos = u - k + (oldToNew[x].startPos); //check correctness
+                        oldToNew[x].endPos = u - K + (oldToNew[x].startPos); //check correctness
                     }
 
                     // I know what's my new home now
                     // more complicated than this
                     string parentSeq = newSequences.at(oldToNew[x].serial);
                     string childSeq = unitigs.at(x).sequence;
-                    //                    if(xEdge.left = false){
-                    //                        parentSeq = reverseComplement(parentSeq);
-                    //                    }
+                    
+
+//                    if(xEdge.left = false){ // - sign
+//                        parentSeq = reverseComplement(parentSeq);
+//                    }
                     // NOT CORRECT, just for testing now
-                    newSequences.at(oldToNew[x].serial) = plus_strings(parentSeq, childSeq, k);
+                    newSequences.at(oldToNew[x].serial) = plus_strings(parentSeq, childSeq, K);
                 }
 
 
@@ -327,12 +325,23 @@ public:
                                 if(y==2 && x == 0){
                                     cout<<"HUNT "<<saturated[x]<<endl;
                                 }
+                                
+                                //TESTED NOT YET
+                                if(nodeSign[y] == false){
+                                    unitigs.at(y).sequence = reverseComplement(unitigs.at(y).sequence);
+                                }
 
                             } else if (nodeSign[x] == yEdge.left) {
                                 // case 2: child has grandparent, my parent exists
                                 nodeSign[y] = yEdge.right;
                                 p[y] = x;
                                 saturated[x] = true; //found a child
+                                
+                                 //TESTED NOT YET
+                                if(nodeSign[y] == false){
+                                    unitigs.at(y).sequence = reverseComplement(unitigs.at(y).sequence);
+                                }
+
                             } else{
                                 // do we reach this case?
                                 edge_both_t e;
@@ -418,6 +427,10 @@ public:
 
     }
 
+    void DFSStitch(){
+        
+    }
+    
     ~Graph() {
         delete [] color;
         delete [] p;
@@ -526,8 +539,8 @@ int main(int argc, char** argv) {
     
     double startTime = readTimer();
 
-    cout << "Starting reading file: " << unitigFileName << endl;
-    if (EXIT_FAILURE == get_data(unitigFileName, data, unitigs, char_count)) {
+    cout << "Starting reading file: " << UNITIG_FILE << endl;
+    if (EXIT_FAILURE == get_data(UNITIG_FILE, data, unitigs, char_count)) {
         return EXIT_FAILURE;
     }
 
@@ -556,10 +569,10 @@ int main(int argc, char** argv) {
         C += unitig.ln;
     }
 
-    int k = 0;
+    int pp = 0;
     for (string s : newSequences) {
         C_new += s.length();
-        cout<<k++ << "QQQQQQ -> " << s.length()<<endl;
+        cout<<pp++ << "QQQQQQ -> " << s.length()<<endl;
     }
 
 
@@ -584,10 +597,10 @@ int main(int argc, char** argv) {
     // For collecting stats
     int U_MAX = maximumUnitigLength();
     int EDGE_INT_DTYPE_SIZE;
-    if (U_MAX - k + 1 > 0) {
-        EDGE_INT_DTYPE_SIZE = log2(U_MAX - k + 1);
+    if (U_MAX - K + 1 > 0) {
+        EDGE_INT_DTYPE_SIZE = log2(U_MAX - K + 1);
     } else {
-        EDGE_INT_DTYPE_SIZE = log2(k);
+        EDGE_INT_DTYPE_SIZE = log2(K);
     }
     EDGE_INT_DTYPE_SIZE = ceil(EDGE_INT_DTYPE_SIZE / 8.0);
 
@@ -613,9 +626,7 @@ int main(int argc, char** argv) {
 //    cout << "Space before: " << spaceBefore << " bytes." << endl;
 //    cout << "Percent saved: " << ((save - overhead)*1.0 / spaceBefore) * 100.0 << "%" << endl;
 
-
-
-    printf("%d \t %d \t %d \t %d \t %d \t %d \t %f \t %f \t %.2f%% \t %d \t %d \t %f \t %f\n", V, V_new, E, E_new, C, C_new, spaceBefore / 1024.0, (save - overhead) / 1024.0, persaved, U_MAX, k, TIME_READ_SEC, TIME_TOTAL_SEC);
+    printf("%d \t %d \t %d \t %d \t %d \t %d \t %f \t %f \t %.2f%% \t %d \t %d \t %f \t %f\n", V, V_new, E, E_new, C, C_new, spaceBefore / 1024.0, (save - overhead) / 1024.0, persaved, U_MAX, K, TIME_READ_SEC, TIME_TOTAL_SEC);
     //printGraph(adjList);
     //printAllSequences(unitigs);
     return EXIT_SUCCESS;
