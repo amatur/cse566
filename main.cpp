@@ -267,6 +267,9 @@ public:
                     string childSeq = unitigs.at(x).sequence;
 
                     // Is it CORRECT? just for testing now
+                    if(nodeSign[p[x]]==false){
+                        parentSeq = reverseComplement(parentSeq);
+                    }
                     newSequences.at(oldToNew[x].serial) = plus_strings(parentSeq, childSeq, K);
                 }
 
@@ -410,19 +413,27 @@ public:
             // ACT(-)  (+)->(-)  AAG(+) : you need to convert it, because => AGT  (+)->(-)  AAG => this is not correct:
             // to fix this AGT (-)->(-) AAG
             // don't touch the node sign: just fix the edge signs 
-            if (nodeSign[e.fromNode] != e.edge.left) {
-                e.edge.left = !e.edge.left;
-            }
-            if (nodeSign[e.edge.toNode] != e.edge.right) {
-                e.edge.right = !e.edge.right;
-            }
-
+            
             int x = e.fromNode;
             int u = unitigs.at(x).ln;
             newEdge_t newEdge;
-            newEdge.edge = e.edge;
             newEdge.kmerEndIndex = oldToNew[e.edge.toNode].startPos;
-            newEdge.kmerStartIndex = oldToNew[x].startPos;
+            newEdge.kmerStartIndex = oldToNew[x].endPos;
+            
+            if(e.fromNode!=e.edge.toNode) {
+                if (nodeSign[e.fromNode] != e.edge.left) {
+                    e.edge.left = !e.edge.left;
+                    newEdge.kmerStartIndex = oldToNew[x].startPos;
+                }
+                if (nodeSign[e.edge.toNode] != e.edge.right) {
+                    e.edge.right = !e.edge.right;
+                    newEdge.kmerEndIndex = oldToNew[e.edge.toNode].endPos;
+                }
+            }
+           
+
+            newEdge.edge = e.edge;
+            newEdge.edge.toNode = oldToNew[newEdge.edge.toNode].serial;
 
             newAdjList[oldToNew[x].serial].push_back(newEdge);
             cout << "old: " << x << "->" << e.edge.toNode << ", new:" << " (" << oldToNew[x].serial << "->" << newEdge.edge.toNode << ")" << endl;
