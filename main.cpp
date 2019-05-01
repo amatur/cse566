@@ -54,6 +54,7 @@ typedef struct {
     int kmerEndIndex;
 } newEdge_t;
 
+int DEBUG = 2;
 
 // ------- PARAMETERS -------- //
 int K = 5;
@@ -123,7 +124,6 @@ int countInArcs(int node) {
     string countFile = "incount.txt";
     //string inputFile = "unitigs.fa";
     string inputFile = UNITIG_FILE;
-
     ostringstream stringStream;
     stringStream << "grep -o -i :" << node << ": " << inputFile << " | wc -l > " << countFile;
     string copyOfStr = stringStream.str();
@@ -147,7 +147,7 @@ int maximumUnitigLength() {
     string line;
     string countFile = "incount.txt";
     ostringstream stringStream;
-    stringStream<<"grep '>' "<<UNITIG_FILE<<" | cut -d : -f3 | cut -d ' ' -f1 | sort -n | tail -n 1 > "<<countFile;
+    stringStream << "grep '>' " << UNITIG_FILE << " | cut -d : -f3 | cut -d ' ' -f1 | sort -n | tail -n 1 > " << countFile;
     string copyOfStr = stringStream.str();
     system(copyOfStr.c_str());
     ifstream cf;
@@ -159,7 +159,6 @@ int maximumUnitigLength() {
     return count;
 }
 
-
 inline char boolToCharSign(bool sign) {
     return (sign == true) ? '+' : '-';
 }
@@ -167,7 +166,7 @@ inline char boolToCharSign(bool sign) {
 
 // @@ --- ALL PRINTING CODE --- //
 
-void printGraph(vector<vector<edge_t> > adjList) {
+void printBCALMGraph(vector<vector<edge_t> > adjList) {
     for (int i = 0; i < adjList.size(); i++) {
         cout << i << "# ";
         for (edge_t edge : adjList.at(i)) {
@@ -177,7 +176,7 @@ void printGraph(vector<vector<edge_t> > adjList) {
     }
 }
 
-void printAllSequences(vector<unitig_struct_t> unitigs) {
+void printAllBCALMSequences(vector<unitig_struct_t> unitigs) {
     for (unitig_struct_t unitig : unitigs) {
         cout << unitig.serial << ": " << unitig.ln << " " << unitig.sequence.length() << endl; //sequence only^
         // full print
@@ -185,16 +184,18 @@ void printAllSequences(vector<unitig_struct_t> unitigs) {
     }
 }
 
+
 class Graph {
 public:
     int V = adjList.size();
+    int countNewNode;
+    int time;
+
     char* color;
     int* p;
     bool* nodeSign;
     new_node_info_t* oldToNew;
-    int time;
     bool* saturated;
-    int countNewNode;
 
     Graph() {
         color = new char[V];
@@ -219,153 +220,159 @@ public:
             edge_t xEdge = s.top();
             int x = xEdge.toNode;
             s.pop();
-            
+
             if (color[x] == 'w') {
                 //Original DFS code
                 time = time + 1;
                 color[x] = 'g';
                 s.push(xEdge);
                 vector<edge_t> adjx = adjList.at(x);
-                
+
                 // Now our branching code ::
-                
+
                 // For a white x
                 // Consider 2 case:
                 // Case 1. p[x] = -1, it can happen in two way, x is the first one ever in this connected component, or no one wanted to take x
-                        // either way, if p[x] = -1, i can be representative of a new node in new graph
+                // either way, if p[x] = -1, i can be representative of a new node in new graph
                 // Case 2. p[x] != -1, so x won't be the representative/head of a newHome. x just gets added to its parent's newHome.
                 int u = unitigs.at(x).ln; //unitig length
                 if (p[x] == -1) {
-                    oldToNew[x].serial = countNewNode++; //start at 0   
+                    oldToNew[x].serial = countNewNode++; // countNewNode starts at 0, then keeps increasing   
+
                     //make the sequence
-                    
-                    //NOT CORRECT
+                    //NOT CORRECT? I am not sure
                     newSequences.push_back(unitigs.at(x).sequence);
 
                     oldToNew[x].startPos = 1;
                     if (u <= K) {
-                        oldToNew[x].endPos = 1; // do we actually see this?
+                        oldToNew[x].endPos = 1; // do we actually see this? yes
                         //cout<< "u<=k???"<<endl;
                     } else {
                         oldToNew[x].endPos = u - K + 1;
                     }
 
                 } else {
-
                     oldToNew[x].serial = oldToNew[p[x]].serial;
                     oldToNew[x].startPos = oldToNew[p[x]].endPos + 1;
                     if (u <= K) {
-                        oldToNew[x].endPos = oldToNew[x].startPos + 1; // do we actually see this?
+                        oldToNew[x].endPos = oldToNew[x].startPos + 1; // do we actually see this? yes
                         //cout<< "u<=k???"<<endl;
                     } else {
                         oldToNew[x].endPos = u - K + (oldToNew[x].startPos); //check correctness
                     }
 
-                    // I know what's my new home now
-                    // more complicated than this
+                    // x says: Now that I know where my newHome is: I can extend my parent's sequence
+                    // Is it more complicated than this?
                     string parentSeq = newSequences.at(oldToNew[x].serial);
                     string childSeq = unitigs.at(x).sequence;
-                    
 
-//                    if(xEdge.left = false){ // - sign
-//                        parentSeq = reverseComplement(parentSeq);
-//                    }
-                    // NOT CORRECT, just for testing now
+                    // Is it CORRECT? just for testing now
                     newSequences.at(oldToNew[x].serial) = plus_strings(parentSeq, childSeq, K);
                 }
 
-
                 // x->y is the edge, x is the parent we are extending
-                for (edge_t yEdge: adjx ) {  //edge_t yEdge = adjx.at(i);
-                    
+                for (edge_t yEdge : adjx) { //edge_t yEdge = adjx.at(i);
                     int y = yEdge.toNode;
-                    cout<<"Edge "<<x<<"->"<<y<<endl;
+
+                    if (DEBUG > 0) {
+                        cout << "Edge " << x << "->" << y << endl;
+                    }
+
                     //Normal DFS
                     if (color[y] == 'w') {
                         s.push(yEdge);
                     }
 
-                    if(y==2 && x == 0){
-                        cout<<"Sat "<<saturated[x]<<endl;
+                    if(DEBUG > 4){
+                        // DEBUGGING a particular edge
+                        if (y == 2 && x == 0) {
+                            cout << "Saturated? " << saturated[x] << endl;
+                        }
                     }
-                    //handle self-loop
-                    if(y == x){
+                    
+                    //handle self-loop, self-loop will always be an extra edge
+                    if (y == x) {
                         edge_both_t e;
                         e.edge = yEdge;
                         e.fromNode = x;
                         resolveLaterEdges.push_back(e);
-                    }else if (saturated[x]) {
-                        // ami saturated, ekhon just resolve later edge ber kora
+                    } else if (saturated[x]) {
+                        // Since x is saturated, we only add resolveLater edges
                         // no need to check for consistency
-                        if(y!=p[x]){
+                        if (y != p[x]) {
                             edge_both_t e;
                             e.edge = yEdge;
                             e.fromNode = x;
                             resolveLaterEdges.push_back(e);
                         }
-                        
-
-
                     } else {
-                        // amar nijer jayga thakle, mane ami jodi saturated na hoi 
+                        // If x has space to take a child, meaning x is not saturated
                         // hunting for potential child
-                        
-                        if (color[y] == 'w' && p[y]==-1) {
+
+                        if (color[y] == 'w' && p[y] == -1) {
+                            // y has white color & got no parent => means it's homeless, so let's see if we can take it as a child of x
+                            //But just see if it is eligible to be a child, i.e. is it consistent (sign check)?
                             
-                            // white mane pobitro homeless obosshoi, eke nite CHABO amar child hishebe
-                            // nite chacchi, but dekhte hobe she ki neyar moto kina
-                            // is it consistent?
-                            //2 case, my child will has grandparent or not
+                            //2 case, Does x's child have grandparent?
+                                // No.
                             if (p[x] == -1) {
                                 // case 1: child has no grandparent
+                                // so extend path without checking any sign
                                 nodeSign[x] = yEdge.left;
                                 nodeSign[y] = yEdge.right;
                                 p[y] = x;
                                 saturated[x] = true; //found a child
-                                if(y==2 && x == 0){
-                                    cout<<"HUNT "<<saturated[x]<<endl;
-                                }
-                                
-                                //TESTED NOT YET
-                                if(nodeSign[y] == false){
-                                    unitigs.at(y).sequence = reverseComplement(unitigs.at(y).sequence);
+                                if (y == 2 && x == 0) {
+                                    cout << "HUNT " << saturated[x] << endl;
                                 }
 
+                                //TESTED NOT YET
+                                if (nodeSign[y] == false) {
+                                    unitigs.at(y).sequence = reverseComplement(unitigs.at(y).sequence);
+                                }
+                                
+                                //Yes.
                             } else if (nodeSign[x] == yEdge.left) {
-                                // case 2: child has grandparent, my parent exists
+                                // case 2: child (=y) has grandparent, i.e. x's parent exists
                                 nodeSign[y] = yEdge.right;
                                 p[y] = x;
                                 saturated[x] = true; //found a child
-                                
-                                 //TESTED NOT YET
-                                if(nodeSign[y] == false){
+
+                                //TESTED NOT YET
+                                if (nodeSign[y] == false) {
                                     unitigs.at(y).sequence = reverseComplement(unitigs.at(y).sequence);
                                 }
 
-                            } else{
-                                // do we reach this case?
+                            } else {
+                                // do we reach this case? 
                                 edge_both_t e;
                                 e.edge = yEdge;
                                 e.fromNode = x;
                                 resolveLaterEdges.push_back(e);
                             }
-                            // ei 2 case er konotatei porenai, tahole oke home dite parchi na
-                        }else{
-                            if(y!=p[x]){
+                            
+                        } else {
+                            if (y != p[x]) {
                                 edge_both_t e;
                                 e.edge = yEdge;
                                 e.fromNode = x;
                                 resolveLaterEdges.push_back(e);
-                                if(y==2 && x == 0){
-                                    cout<<"Sat "<<saturated[x]<<endl;
+                                if (DEBUG > 4) {
+                                    // DEBUGGING a particular edge
+                                    if (y == 2 && x == 0) {
+                                        cout << "Saturated? " << saturated[x] << endl;
+                                    }
                                 }
-                            }else{
-                                if(y==2 && x == 0){
-                                    cout<<"Sat "<<saturated[x]<<endl;
+                            } else {
+                                if (DEBUG > 4) {
+                                    // DEBUGGING a particular edge
+                                    if (y == 2 && x == 0) {
+                                        cout << "Saturated? " << saturated[x] << endl;
+                                    }
                                 }
                             }
-                            
-                            
+
+
                         }
                     }
                 }
@@ -373,7 +380,6 @@ public:
             } else if (color[x] == 'g') {
                 time = time + 1;
                 color[x] = 'b';
-                cout<<"FInished visit "<<x<<endl;
             }
 
         }
@@ -387,16 +393,14 @@ public:
         }
 
         for (int i = 0; i < V; i++) {
-            cout<<"DFS ";
             if (color[i] == 'w') {
                 DFS_visit(i);
             }
         }
-        
-        for(int i = 0; i< countNewNode; i++){
+
+        for (int i = 0; i < countNewNode; i++) {
             newAdjList.push_back(vector<newEdge_t>());
         }
-        
 
         for (edge_both_t e : resolveLaterEdges) {
             // e.start -> e.end : they have different newHome
@@ -406,38 +410,68 @@ public:
             // ACT(-)  (+)->(-)  AAG(+) : you need to convert it, because => AGT  (+)->(-)  AAG => this is not correct:
             // to fix this AGT (-)->(-) AAG
             // don't touch the node sign: just fix the edge signs 
-            if(nodeSign[e.fromNode] != e.edge.left){
+            if (nodeSign[e.fromNode] != e.edge.left) {
                 e.edge.left = !e.edge.left;
             }
-             if(nodeSign[e.edge.toNode] != e.edge.right){
+            if (nodeSign[e.edge.toNode] != e.edge.right) {
                 e.edge.right = !e.edge.right;
             }
-            
+
             int x = e.fromNode;
             int u = unitigs.at(x).ln;
             newEdge_t newEdge;
             newEdge.edge = e.edge;
-            newEdge.kmerEndIndex = oldToNew[x].endPos;
+            newEdge.kmerEndIndex = oldToNew[e.edge.toNode].startPos;
             newEdge.kmerStartIndex = oldToNew[x].startPos;
-            
+
             newAdjList[oldToNew[x].serial].push_back(newEdge);
-            cout<<"old: "<<x<<"->"<<e.edge.toNode<<", new:" <<" ("<< oldToNew[x].serial<<"->"<<newEdge.edge.toNode<<")"<<endl;
+            cout << "old: " << x << "->" << e.edge.toNode << ", new:" << " (" << oldToNew[x].serial << "->" << newEdge.edge.toNode << ")" << endl;
         }
-
-
     }
 
-    void DFSStitch(){
-        
-    }
-    
+
     ~Graph() {
         delete [] color;
         delete [] p;
         delete [] nodeSign;
         delete [] oldToNew;
+        delete [] saturated;
     }
 };
+
+
+void printNewGraph(Graph &G){
+    list<int> *newToOld = new list<int>[G.countNewNode];
+
+    // PRINT NEW GRAPH
+    for (int i = 0; i < G.V; i++) {
+        newToOld[G.oldToNew[i].serial].push_back(i);
+        cout << "old " << i << "-> new" << G.oldToNew[i].serial << endl;
+    }
+    delete [] newToOld;
+
+}
+
+void formattedOutput(Graph &G){
+     
+    string stitchedUnitigs = "stitchedUnitigs.txt";
+     ofstream myfile;
+    myfile.open (stitchedUnitigs);
+    //>0 LN:i:13 KC:i:12 km:f:1.3  L:-:0:- L:-:2:-  L:+:0:+ L:+:1:- 
+    for (int newNodeNum = 0; newNodeNum<G.countNewNode; newNodeNum++){
+         myfile << '>' << newNodeNum <<" LN:i:"<<newSequences.at(newNodeNum).length()<<" ";
+         vector<newEdge_t> edges = newAdjList.at(newNodeNum);
+         for(newEdge_t edge: edges){
+             myfile<<"L:" << edge.kmerStartIndex << ":" << boolToCharSign(edge.edge.left) << ":" << edge.edge.toNode << ":" << boolToCharSign(edge.edge.left) <<":"<< edge.kmerEndIndex <<" ";
+         }
+        myfile<<endl;
+        myfile<<newSequences.at(newNodeNum);
+        myfile<<endl;
+    }
+    //myfile << '>' << newNodeNum <<">0 LN:i:13 KC:i:12 km:f:1.3  L:-:0:- L:-:2:-  L:+:0:+ L:+:1:- " ;
+    myfile.close();
+    
+}
 
 int getNodeNumFromFile(string filename) {
     //grep '>' list_reads.unitigs.fa | tail -n 1
@@ -535,8 +569,8 @@ int get_data(const string& unitigFileName,
 int main(int argc, char** argv) {
     uint64_t char_count;
     uchar *data = NULL;
-    
-    
+
+
     double startTime = readTimer();
 
     cout << "Starting reading file: " << UNITIG_FILE << endl;
@@ -551,8 +585,9 @@ int main(int argc, char** argv) {
 
     G.DFS();
 
-    list<int> *newToOld = new list<int>[G.countNewNode];
-
+   
+    
+    
     //count total number of edges
     int E = 0;
     for (int i = 0; i < G.V; i++) {
@@ -569,31 +604,29 @@ int main(int argc, char** argv) {
         C += unitig.ln;
     }
 
-    int pp = 0;
-    for (string s : newSequences) {
-        C_new += s.length();
-        cout<<pp++ << "QQQQQQ -> " << s.length()<<endl;
+
+    /** --DEBUG: PRINT THE LENGTHS **/
+    if (DEBUG > 1) {
+        int pp = 0;
+        for (string s : newSequences) {
+            C_new += s.length();
+            cout << pp++ << " -> Length = " << s.length() << endl;
+        }
     }
 
 
-    // PRINT NEW GRAPH
-    for (int i = 0; i < G.V; i++) {
-        newToOld[G.oldToNew[i].serial].push_back(i);
-        
-        cout<<"old "<<i<<"-> new"<< G.oldToNew[i].serial<<endl;
+
+
+    for (int i = 0; i < newSequences.size(); i++) {
+
+        cout << i << " " << newSequences.at(i) << endl;
+        //cout<<i<<" "<<newSequences.at(i).length()<<endl;
     }
 
-            for (int i = 0; i < newSequences.size(); i++) {
-                
-                cout<< i<< " " <<newSequences.at(i)<<endl;
-                //cout<<i<<" "<<newSequences.at(i).length()<<endl;
-            }
-    delete [] newToOld;
+
+    double TIME_TOTAL_SEC = readTimer() - startTime;
 
 
-    double TIME_TOTAL_SEC = readTimer() - startTime ;
-
-    
     // For collecting stats
     int U_MAX = maximumUnitigLength();
     int EDGE_INT_DTYPE_SIZE;
@@ -613,19 +646,19 @@ int main(int argc, char** argv) {
     int overhead = (E_new)*(2 * EDGE_INT_DTYPE_SIZE);
     float persaved = ((save - overhead)*1.0 / spaceBefore) * 100.0;
 
-//    cout << "Time for loading the data: " << TIME_READ_SEC << " sec" << endl;
-//    cout << "Total construction time: " << TIME_TOTAL_SEC<< " sec" << endl;
-//    cout << "V: " << V << endl;
-//    cout << "V_new: " << V_new << endl;
-//    cout << "E: " << E << endl;
-//    cout << "E_new: " << E_new << endl;
-//    cout << "C: " << C << endl;
-//    cout << "C_new: " << C_new << endl;
-//    cout << "Number of Bytes required for storing one edge start or end: " << EDGE_INT_DTYPE_SIZE << endl;
-//    cout << "Space saved: " << save - overhead << " bytes." << endl;
-//    cout << "Space before: " << spaceBefore << " bytes." << endl;
-//    cout << "Percent saved: " << ((save - overhead)*1.0 / spaceBefore) * 100.0 << "%" << endl;
-
+    //    cout << "Time for loading the data: " << TIME_READ_SEC << " sec" << endl;
+    //    cout << "Total construction time: " << TIME_TOTAL_SEC<< " sec" << endl;
+    //    cout << "V: " << V << endl;
+    //    cout << "V_new: " << V_new << endl;
+    //    cout << "E: " << E << endl;
+    //    cout << "E_new: " << E_new << endl;
+    //    cout << "C: " << C << endl;
+    //    cout << "C_new: " << C_new << endl;
+    //    cout << "Number of Bytes required for storing one edge start or end: " << EDGE_INT_DTYPE_SIZE << endl;
+    //    cout << "Space saved: " << save - overhead << " bytes." << endl;
+    //    cout << "Space before: " << spaceBefore << " bytes." << endl;
+    //    cout << "Percent saved: " << ((save - overhead)*1.0 / spaceBefore) * 100.0 << "%" << endl;
+    formattedOutput(G);
     printf("%d \t %d \t %d \t %d \t %d \t %d \t %f \t %f \t %.2f%% \t %d \t %d \t %f \t %f\n", V, V_new, E, E_new, C, C_new, spaceBefore / 1024.0, (save - overhead) / 1024.0, persaved, U_MAX, K, TIME_READ_SEC, TIME_TOTAL_SEC);
     //printGraph(adjList);
     //printAllSequences(unitigs);
