@@ -54,18 +54,22 @@ typedef struct {
     int kmerEndIndex;
 } newEdge_t;
 
-int DEBUG = 2;
+int DEBUG = 0;
 
 // ------- PARAMETERS -------- //
 int K = 5;
 string UNITIG_FILE = "data/list_reads.unitigs.fa";
+
+//int K = 21;
+//string UNITIG_FILE = "exclude/list_reads.unitigs.human.fa";
 
 
 vector<vector<edge_t> > adjList;
 vector<vector<newEdge_t> > newAdjList;
 vector<edge_both_t> resolveLaterEdges;
 vector<unitig_struct_t> unitigs;
-vector<string> newSequences;
+//vector<string> newSequences;
+map<int, string> newSequences;
 
 inline string plus_strings(const string& a, const string& b, size_t kmersize) {
     if (a == "") return b;
@@ -241,7 +245,7 @@ public:
 
                     //make the sequence
                     //NOT CORRECT? I am not sure
-                    newSequences.push_back(unitigs.at(x).sequence);
+                    newSequences[oldToNew[x].serial] = (unitigs.at(x).sequence);
 
                     oldToNew[x].startPos = 1;
                     if (u <= K) {
@@ -263,14 +267,14 @@ public:
 
                     // x says: Now that I know where my newHome is: I can extend my parent's sequence
                     // Is it more complicated than this?
-                    string parentSeq = newSequences.at(oldToNew[x].serial);
+                    string parentSeq = newSequences[oldToNew[x].serial];
                     string childSeq = unitigs.at(x).sequence;
 
                     // Is it CORRECT? just for testing now
                     if(nodeSign[p[x]]==false){
                         parentSeq = reverseComplement(parentSeq);
                     }
-                    newSequences.at(oldToNew[x].serial) = plus_strings(parentSeq, childSeq, K);
+                    newSequences[oldToNew[x].serial] = plus_strings(parentSeq, childSeq, K);
                 }
 
                 // x->y is the edge, x is the parent we are extending
@@ -325,9 +329,7 @@ public:
                                 nodeSign[y] = yEdge.right;
                                 p[y] = x;
                                 saturated[x] = true; //found a child
-                                if (y == 2 && x == 0) {
-                                    cout << "HUNT " << saturated[x] << endl;
-                                }
+                                
 
                                 //TESTED NOT YET
                                 if (nodeSign[y] == false) {
@@ -436,7 +438,11 @@ public:
             newEdge.edge.toNode = oldToNew[newEdge.edge.toNode].serial;
 
             newAdjList[oldToNew[x].serial].push_back(newEdge);
-            cout << "old: " << x << "->" << e.edge.toNode << ", new:" << " (" << oldToNew[x].serial << "->" << newEdge.edge.toNode << ")" << endl;
+            
+            if(DEBUG > 0){
+                cout << "old: " << x << "->" << e.edge.toNode << ", new:" << " (" << oldToNew[x].serial << "->" << newEdge.edge.toNode << ")" << endl;
+
+            }
         }
     }
 
@@ -470,13 +476,13 @@ void formattedOutput(Graph &G){
     myfile.open (stitchedUnitigs);
     //>0 LN:i:13 KC:i:12 km:f:1.3  L:-:0:- L:-:2:-  L:+:0:+ L:+:1:- 
     for (int newNodeNum = 0; newNodeNum<G.countNewNode; newNodeNum++){
-         myfile << '>' << newNodeNum <<" LN:i:"<<newSequences.at(newNodeNum).length()<<" ";
+         myfile << '>' << newNodeNum <<" LN:i:"<<newSequences[newNodeNum].length()<<" ";
          vector<newEdge_t> edges = newAdjList.at(newNodeNum);
          for(newEdge_t edge: edges){
              myfile<<"L:" << edge.kmerStartIndex << ":" << boolToCharSign(edge.edge.left) << ":" << edge.edge.toNode << ":" << boolToCharSign(edge.edge.left) <<":"<< edge.kmerEndIndex <<" ";
          }
         myfile<<endl;
-        myfile<<newSequences.at(newNodeNum);
+        myfile<<newSequences[newNodeNum];
         myfile<<endl;
     }
     //myfile << '>' << newNodeNum <<">0 LN:i:13 KC:i:12 km:f:1.3  L:-:0:- L:-:2:-  L:+:0:+ L:+:1:- " ;
@@ -592,13 +598,8 @@ int main(int argc, char** argv) {
     double TIME_READ_SEC = readTimer() - startTime;
 
     Graph G;
-    cout << G.V << endl;
-
     G.DFS();
 
-   
-    
-    
     //count total number of edges
     int E = 0;
     for (int i = 0; i < G.V; i++) {
@@ -617,22 +618,28 @@ int main(int argc, char** argv) {
 
 
     /** --DEBUG: PRINT THE LENGTHS **/
-    if (DEBUG > 1) {
-        int pp = 0;
-        for (string s : newSequences) {
-            C_new += s.length();
-            cout << pp++ << " -> Length = " << s.length() << endl;
-        }
+//    if (DEBUG > 1) {
+//        int pp = 0;
+//        for (string s : newSequences) {
+//            C_new += s.length();
+//            cout << pp++ << " -> Length = " << s.length() << endl;
+//        }
+//    }
+    
+    
+    map<int, string>::iterator it;
+    for (it = newSequences.begin(); it != newSequences.end(); it++)
+    {
+        C_new += (it->second).length();
     }
 
 
 
-
-    for (int i = 0; i < newSequences.size(); i++) {
-
-        cout << i << " " << newSequences.at(i) << endl;
-        //cout<<i<<" "<<newSequences.at(i).length()<<endl;
-    }
+//    for (int i = 0; i < newSequences.size(); i++) {
+//
+//        cout << i << " " << newSequences.at(i) << endl;
+//        //cout<<i<<" "<<newSequences.at(i).length()<<endl;
+//    }
 
 
     double TIME_TOTAL_SEC = readTimer() - startTime;
