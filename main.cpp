@@ -1,6 +1,7 @@
-// --- VERSION 1.2 ----
-// Statistics with correct edge sign label, sequence stitching still not done
+// --- VERSION 1.3 ----
+// Statistics with correct edge sign label, sequence stitching still not done, a lot of bugs fixed
 
+#include<cmath>
 #include <fstream>
 #include <iostream>
 #include <vector>
@@ -56,7 +57,7 @@ typedef struct {
 
 
 // ------- PARAMETERS -------- //
-int k = 11;
+int k = 5;
 string unitigFileName = "data/list_reads.unitigs.fa";
 
 
@@ -219,13 +220,14 @@ public:
             edge_t xEdge = s.top();
             int x = xEdge.toNode;
             s.pop();
+            
             if (color[x] == 'w') {
                 //Original DFS code
                 time = time + 1;
                 color[x] = 'g';
                 s.push(xEdge);
                 vector<edge_t> adjx = adjList.at(x);
-
+                
 
                 // For a white x
                 // p[x] = -1, it can happen in two way, I am the first one ever in this con.component, or no one wanted to take me
@@ -279,28 +281,39 @@ public:
                 for (edge_t yEdge: adjx ) {  //edge_t yEdge = adjx.at(i);
                     
                     int y = yEdge.toNode;
-
+                    cout<<"Edge "<<x<<"->"<<y<<endl;
                     //Normal DFS
                     if (color[y] == 'w') {
                         s.push(yEdge);
                     }
 
-                    //Code for making new graph
-                    if (saturated[x]) {
-                        // ami saturated, ekhon just resolve later edge ber kora
-                        // no need to check for consistency
-
+                    if(y==2 && x == 0){
+                        cout<<"Sat "<<saturated[x]<<endl;
+                    }
+                    //handle self-loop
+                    if(y == x){
                         edge_both_t e;
                         e.edge = yEdge;
                         e.fromNode = x;
                         resolveLaterEdges.push_back(e);
+                    }else if (saturated[x]) {
+                        // ami saturated, ekhon just resolve later edge ber kora
+                        // no need to check for consistency
+                        if(y!=p[x]){
+                            edge_both_t e;
+                            e.edge = yEdge;
+                            e.fromNode = x;
+                            resolveLaterEdges.push_back(e);
+                        }
+                        
 
 
                     } else {
                         // amar nijer jayga thakle, mane ami jodi saturated na hoi 
                         // hunting for potential child
-
-                        if (color[y] == 'w') {
+                        
+                        if (color[y] == 'w' && p[y]==-1) {
+                            
                             // white mane pobitro homeless obosshoi, eke nite CHABO amar child hishebe
                             // nite chacchi, but dekhte hobe she ki neyar moto kina
                             // is it consistent?
@@ -311,15 +324,39 @@ public:
                                 nodeSign[y] = yEdge.right;
                                 p[y] = x;
                                 saturated[x] = true; //found a child
-
+                                if(y==2 && x == 0){
+                                    cout<<"HUNT "<<saturated[x]<<endl;
+                                }
 
                             } else if (nodeSign[x] == yEdge.left) {
                                 // case 2: child has grandparent, my parent exists
                                 nodeSign[y] = yEdge.right;
                                 p[y] = x;
                                 saturated[x] = true; //found a child
+                            } else{
+                                // do we reach this case?
+                                edge_both_t e;
+                                e.edge = yEdge;
+                                e.fromNode = x;
+                                resolveLaterEdges.push_back(e);
                             }
                             // ei 2 case er konotatei porenai, tahole oke home dite parchi na
+                        }else{
+                            if(y!=p[x]){
+                                edge_both_t e;
+                                e.edge = yEdge;
+                                e.fromNode = x;
+                                resolveLaterEdges.push_back(e);
+                                if(y==2 && x == 0){
+                                    cout<<"Sat "<<saturated[x]<<endl;
+                                }
+                            }else{
+                                if(y==2 && x == 0){
+                                    cout<<"Sat "<<saturated[x]<<endl;
+                                }
+                            }
+                            
+                            
                         }
                     }
                 }
@@ -327,6 +364,7 @@ public:
             } else if (color[x] == 'g') {
                 time = time + 1;
                 color[x] = 'b';
+                cout<<"FInished visit "<<x<<endl;
             }
 
         }
@@ -340,6 +378,7 @@ public:
         }
 
         for (int i = 0; i < V; i++) {
+            cout<<"DFS ";
             if (color[i] == 'w') {
                 DFS_visit(i);
             }
@@ -373,6 +412,7 @@ public:
             newEdge.kmerStartIndex = oldToNew[x].startPos;
             
             newAdjList[oldToNew[x].serial].push_back(newEdge);
+            cout<<"old: "<<x<<"->"<<e.edge.toNode<<", new:" <<" ("<< oldToNew[x].serial<<"->"<<newEdge.edge.toNode<<")"<<endl;
         }
 
 
@@ -516,21 +556,25 @@ int main(int argc, char** argv) {
         C += unitig.ln;
     }
 
+    int k = 0;
     for (string s : newSequences) {
         C_new += s.length();
+        cout<<k++ << "QQQQQQ -> " << s.length()<<endl;
     }
 
 
     // PRINT NEW GRAPH
     for (int i = 0; i < G.V; i++) {
         newToOld[G.oldToNew[i].serial].push_back(i);
+        
+        cout<<"old "<<i<<"-> new"<< G.oldToNew[i].serial<<endl;
     }
 
-    //        for (int i = 0; i < newSequences.size(); i++) {
-    //            
-    //            //cout<< i<< " " <<newSequences.at(i)<<endl;
-    //            cout<<i<<" "<<newSequences.at(i).length()<<endl;
-    //        }
+            for (int i = 0; i < newSequences.size(); i++) {
+                
+                cout<< i<< " " <<newSequences.at(i)<<endl;
+                //cout<<i<<" "<<newSequences.at(i).length()<<endl;
+            }
     delete [] newToOld;
 
 
