@@ -57,11 +57,14 @@ typedef struct {
 int DEBUG = 0;
 
 // ------- PARAMETERS -------- //
-int K = 5;
-string UNITIG_FILE = "data/list_reads.unitigs.fa";
+//int K = 5;
+//string UNITIG_FILE = "data/list_reads.unitigs.fa";
 
 //int K = 21;
 //string UNITIG_FILE = "exclude/list_reads.unitigs.human.fa";
+
+int K = 11;
+string UNITIG_FILE = "data/list_reads.unitigs.fa";
 
 
 vector<vector<edge_t> > adjList;
