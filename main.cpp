@@ -1,6 +1,5 @@
-// --- VERSION 1.4 ----
-// Sequence stitching done, not sure if it is okay, works for toy example
-// Statistics with correct edge sign label, sequence stitching still not done, a lot of bugs fixed
+// --- VERSION 1.5 ----
+// Bug fixed and validated
 
 #include<cmath>
 #include <fstream>
@@ -54,11 +53,11 @@ typedef struct {
     int kmerEndIndex;
 } newEdge_t;
 
-int DEBUG = 0;
+int DEBUG = -10;
 
 // ------- PARAMETERS -------- //
-//int K = 5;
-//string UNITIG_FILE = "data/list_reads.unitigs.fa";
+//int K = 21;
+//string UNITIG_FILE = "exclude/human.k21.a2.unitigs.fa";
 
 //int K = 21;
 //string UNITIG_FILE = "exclude/list_reads.unitigs.human.fa";
@@ -73,6 +72,9 @@ vector<edge_both_t> resolveLaterEdges;
 vector<unitig_struct_t> unitigs;
 //vector<string> newSequences;
 map<int, string> newSequences;
+
+
+vector<list<int> > newToOld;
 
 inline string plus_strings(const string& a, const string& b, size_t kmersize) {
     if (a == "") return b;
@@ -192,6 +194,10 @@ void printAllBCALMSequences(vector<unitig_struct_t> unitigs) {
 }
 
 
+class LabeledGraph {
+
+};
+
 class Graph {
 public:
     int V = adjList.size();
@@ -244,11 +250,20 @@ public:
                 // Case 2. p[x] != -1, so x won't be the representative/head of a newHome. x just gets added to its parent's newHome.
                 int u = unitigs.at(x).ln; //unitig length
                 if (p[x] == -1) {
+                    
+                    list<int> xxx;
+                    xxx.push_back(x);
+                    newToOld.push_back(xxx);
                     oldToNew[x].serial = countNewNode++; // countNewNode starts at 0, then keeps increasing   
 
                     //make the sequence
                     //NOT CORRECT? I am not sure
-                    newSequences[oldToNew[x].serial] = (unitigs.at(x).sequence);
+                    if(nodeSign[x]==false){
+                        newSequences[oldToNew[x].serial] = reverseComplement(unitigs.at(x).sequence);
+                    }else{
+                        newSequences[oldToNew[x].serial] = (unitigs.at(x).sequence);
+                    }
+                   
 
                     oldToNew[x].startPos = 1;
                     if (u <= K) {
@@ -259,6 +274,8 @@ public:
                     }
 
                 } else {
+                    
+                    newToOld[oldToNew[p[x]].serial].push_back(x);
                     oldToNew[x].serial = oldToNew[p[x]].serial;
                     oldToNew[x].startPos = oldToNew[p[x]].endPos + 1;
                     if (u <= K) {
@@ -274,8 +291,8 @@ public:
                     string childSeq = unitigs.at(x).sequence;
 
                     // Is it CORRECT? just for testing now
-                    if(nodeSign[p[x]]==false){
-                        parentSeq = reverseComplement(parentSeq);
+                    if(nodeSign[x]==false){
+                        childSeq = reverseComplement(childSeq);
                     }
                     newSequences[oldToNew[x].serial] = plus_strings(parentSeq, childSeq, K);
                 }
@@ -335,9 +352,9 @@ public:
                                 
 
                                 //TESTED NOT YET
-                                if (nodeSign[y] == false) {
-                                    unitigs.at(y).sequence = reverseComplement(unitigs.at(y).sequence);
-                                }
+//                                if (nodeSign[y] == false) {
+//                                    unitigs.at(y).sequence = reverseComplement(unitigs.at(y).sequence);
+//                                }
                                 
                                 //Yes.
                             } else if (nodeSign[x] == yEdge.left) {
@@ -347,9 +364,9 @@ public:
                                 saturated[x] = true; //found a child
 
                                 //TESTED NOT YET
-                                if (nodeSign[y] == false) {
-                                    unitigs.at(y).sequence = reverseComplement(unitigs.at(y).sequence);
-                                }
+//                                if (nodeSign[y] == false) {
+//                                    unitigs.at(y).sequence = reverseComplement(unitigs.at(y).sequence);
+//                                }
 
                             } else {
                                 // do we reach this case? 
@@ -392,6 +409,10 @@ public:
 
         }
     }
+    
+    void DFS_visit_for_seq(int i){
+        
+    }
 
     void DFS() {
 
@@ -405,6 +426,16 @@ public:
                 DFS_visit(i);
             }
         }
+        
+        
+        //reuse the colors
+        for (int i = 0; i < V; i++) {
+            color[i] = 'w';
+        }
+        // make the sequences
+        
+        
+        
 
         for (int i = 0; i < countNewNode; i++) {
             newAdjList.push_back(vector<newEdge_t>());
@@ -466,8 +497,20 @@ void printNewGraph(Graph &G){
     // PRINT NEW GRAPH
     for (int i = 0; i < G.V; i++) {
         newToOld[G.oldToNew[i].serial].push_back(i);
-        cout << "old " << i << "-> new" << G.oldToNew[i].serial << endl;
+        //cout << "old " << i << "-> new" << G.oldToNew[i].serial << endl;
     }
+    
+    for (int i = 0; i < G.countNewNode; i++) {
+        list<int> adj = newToOld[i];
+        
+        cout<<"new " << i<<": old (index) ";
+        for(int val : adj){
+            cout<<val<<" ";
+        }
+        cout<<endl;
+               
+    }
+    
     delete [] newToOld;
 
 }
@@ -602,6 +645,34 @@ int main(int argc, char** argv) {
 
     Graph G;
     G.DFS();
+    
+    printBCALMGraph(adjList);
+    printNewGraph(G);
+    
+    for(int i = 0; i< G.countNewNode; i++){
+        cout<<"new ->" <<i<<" ";
+        for(int x: newToOld[i]){
+            cout<<x<<" ";
+        }
+        cout<<endl;
+    }
+    
+    //fix sequences
+    for(int i = 0; i< G.countNewNode; i++){
+        string s = "";
+        for(int x: newToOld[i]){
+            if(G.nodeSign[x] == false){
+                s = plus_strings(s, reverseComplement(unitigs.at(x).sequence), K);
+            }else{
+                s = plus_strings(s, (unitigs.at(x).sequence), K);
+            }
+        }
+        newSequences[i] = s;
+        //cout<<endl;
+    }
+    
+    
+    // COLLECT STATISTICS
 
     //count total number of edges
     int E = 0;
