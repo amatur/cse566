@@ -1,5 +1,6 @@
-// --- VERSION 1.5 ----
+// --- VERSION 1.7 ----
 // Bug fixed and validated
+// input format input.txt
 
 #include<cmath>
 #include <fstream>
@@ -53,7 +54,7 @@ typedef struct {
     int kmerEndIndex;
 } newEdge_t;
 
-int DEBUG = -10;
+int DEBUG = 0;
 
 // ------- PARAMETERS -------- //
 //int K = 21;
@@ -62,8 +63,11 @@ int DEBUG = -10;
 //int K = 21;
 //string UNITIG_FILE = "exclude/list_reads.unitigs.human.fa";
 
-int K = 11;
-string UNITIG_FILE = "data/list_reads.unitigs.fa";
+//int K = 11;
+//string UNITIG_FILE = "data/list_reads.unitigs.fa";
+
+int K;
+string UNITIG_FILE;
 
 
 vector<vector<edge_t> > adjList;
@@ -630,6 +634,18 @@ int get_data(const string& unitigFileName,
 }
 
 int main(int argc, char** argv) {
+
+    string line;
+    ifstream myfile ("input.txt");
+    if (myfile.is_open())
+    {
+        getline (myfile, UNITIG_FILE);
+        getline (myfile, line);
+        K = stoi(line);
+        myfile.close();
+    }
+
+
     uint64_t char_count;
     uchar *data = NULL;
 
@@ -646,16 +662,20 @@ int main(int argc, char** argv) {
     Graph G;
     G.DFS();
     
-    printBCALMGraph(adjList);
-    printNewGraph(G);
     
-    for(int i = 0; i< G.countNewNode; i++){
-        cout<<"new ->" <<i<<" ";
-        for(int x: newToOld[i]){
-            cout<<x<<" ";
+    if(DEBUG > 5){
+        printBCALMGraph(adjList);
+        printNewGraph(G);
+
+        for(int i = 0; i< G.countNewNode; i++){
+            cout<<"new ->" <<i<<" ";
+            for(int x: newToOld[i]){
+                cout<<x<<" ";
+            }
+            cout<<endl;
         }
-        cout<<endl;
     }
+    
     
     //fix sequences
     for(int i = 0; i< G.countNewNode; i++){
